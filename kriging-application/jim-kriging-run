@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# start eclipse with LD_LIBRARY_PATH set
+
+MATLAB_ROOT="/home/jdowling/opt/MATLAB/MATLAB_Compiler_Runtime/v711"
+
+# on x64 machine these path need to be changed as well !!!!!
+LD_LIBRARY_PATH="$MATLAB_ROOT/runtime/glnxa64:\
+	$MATLAB_ROOT/bin/glnxa64:\
+	$MATLAB_ROOT/sys/os/glnxa64:\
+	$MATLAB_ROOT/sys/java/jre/glnxa64/jre/lib/amd64/native_threads:\
+	$MATLAB_ROOT/sys/java/jre/glnxa64/jre/lib/amd64/server:\
+	$MATLAB_ROOT/sys/java/jre/glnxa64/jre/lib/amd64:\
+	/usr/lib/jni"
+
+XAPPLRESDIR="$MATLAB_ROOT/X11/app-defaults"
+
+export LD_LIBRARY_PATH
+export XAPPLRESDIR
+
+java -jar ./target/kriging-application-0.0.1-SNAPSHOT-jar-with-dependencies.jar
