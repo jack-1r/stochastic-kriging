@@ -16,6 +16,7 @@ import se.sics.kompics.Init;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.kriging.application.gui.SimpleKrigingFrame;
+import se.sics.kriging.components.NotifyAbortComplete;
 import se.sics.kriging.components.NotifyExecCompleted;
 import se.sics.kriging.components.NotifyExpResult;
 import se.sics.kriging.components.NotifyMinimizationCompleted;
@@ -53,6 +54,7 @@ public class SimpleApplication extends ComponentDefinition {
         subscribe(handleMinimizationComplete, portApp);
         subscribe(handleResult, portApp);
         subscribe(handleStatus, portStatus);
+        subscribe(handleAbortComplete, portApp);
         comp = this;
     }
     
@@ -87,6 +89,9 @@ public class SimpleApplication extends ComponentDefinition {
     
     private Handler<ResponseStatus> handleStatus = new Handler<ResponseStatus>() {
         public void handle(ResponseStatus event) {
+            if (frmKr.isRunning() == false) {
+                return;
+            }
             // print out the response status
             System.out.println("[" + System.currentTimeMillis() + "] - "
                     + event.getSource());
@@ -121,14 +126,14 @@ public class SimpleApplication extends ComponentDefinition {
             isSAStep = false;
             isStopped = true;
             if (frmKr.isRunning() == false) {
-                System.out.println("USER INTERRUPTION. ABORTED.");
+                frmKr.finishAbort();
                 return;
             }
             
             if (!frmKr.getRunMode()) {
                 runSA();
             } else {
-                trigger(new RequestGraphDrawing(), portApp);
+//                trigger(new RequestGraphDrawing(), portApp);
                 frmKr.continueSKEnable(true);
                 frmKr.continueSAEnable(true);
             }
@@ -140,7 +145,7 @@ public class SimpleApplication extends ComponentDefinition {
             isSAStep = true;
             isStopped = true;
             if (frmKr.isRunning() == false) {
-                System.out.println("USER INTERRUPTION. ABORTED.");
+                frmKr.finishAbort();
                 return;
             }
             
@@ -156,6 +161,12 @@ public class SimpleApplication extends ComponentDefinition {
     private Handler<NotifyMinimizationCompleted> handleMinimizationComplete = new Handler<NotifyMinimizationCompleted>() {
         
         public void handle(NotifyMinimizationCompleted event) {
+            
+            if (frmKr.isRunning() == false) {
+                frmKr.finishAbort();
+                return;
+            }
+            
             trigger(new RequestOptimal(), portApp);
             frmKr.reset();
         }
@@ -163,6 +174,11 @@ public class SimpleApplication extends ComponentDefinition {
     
     private Handler<NotifyExpResult> handleResult = new Handler<NotifyExpResult>() {
         public void handle(NotifyExpResult event) {
+            if (frmKr.isRunning() == false) {
+                frmKr.finishAbort();
+                return;
+            }
+            
             isStopped = true;
             System.out.println("Experiment end.");
             System.out.println("Optimal point: "
@@ -216,6 +232,13 @@ public class SimpleApplication extends ComponentDefinition {
         isStopped = false;
     }
     
+    Handler<NotifyAbortComplete> handleAbortComplete = new Handler<NotifyAbortComplete>() {
+        @Override
+        public void handle(NotifyAbortComplete event) {
+            frmKr.finishAbort();
+        }
+    };
+    
     public void runSK() {
         trigger(new RequestSK(new SKSettings(2, frmKr.getSKAlgor(), 1000000)),
                 portApp);
@@ -247,7 +270,11 @@ public class SimpleApplication extends ComponentDefinition {
     }
     
     public void abort() {
-        logger.debug("Sending ABORT request to the manager...");
-        trigger(new RequestAbortion(), portApp);
+        if (isStopped)
+            frmKr.finishAbort();
+        else {
+            logger.debug("Sending ABORT request to the manager...");
+            trigger(new RequestAbortion(), portApp);
+        }
     }
 }

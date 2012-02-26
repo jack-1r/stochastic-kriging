@@ -16,4 +16,5 @@ public class PortApplication extends PortType {{
 	indication(NotifyExpResult.class);
 	request(RequestGraphDrawing.class);
 	request(RequestAbortion.class);
+	indication(NotifyAbortComplete.class);
 }}

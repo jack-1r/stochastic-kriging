@@ -45,6 +45,8 @@ public class CloudExecutionManager extends ComponentDefinition {
     private Handler<AbortExecution> handleAbort = new Handler<AbortExecution>() {
         public void handle(AbortExecution event) {
             abortExec(event.getExpId());
+            logger.debug("All exec daemon stopped.");
+            trigger(new NotifyAbortExecution(), execPort);
         }
     };
     

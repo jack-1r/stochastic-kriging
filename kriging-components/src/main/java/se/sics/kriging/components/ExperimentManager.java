@@ -22,6 +22,7 @@ import se.sics.kompics.Negative;
 import se.sics.kompics.Positive;
 import se.sics.kompics.Start;
 import se.sics.stochastic.executors.AbortExecution;
+import se.sics.stochastic.executors.NotifyAbortExecution;
 import se.sics.stochastic.executors.PortExecutors;
 import se.sics.stochastic.executors.RequestExecution;
 import se.sics.stochastic.executors.ResponseExecution;
@@ -72,6 +73,8 @@ public class ExperimentManager extends ComponentDefinition {
     StochasticKriging krg;
     SimulatedAnnealing anl;
     
+    private boolean isExecuting;
+    
     public ExperimentManager() {
         
         subscribe(handleInit, control);
@@ -84,6 +87,7 @@ public class ExperimentManager extends ComponentDefinition {
         subscribe(handleRequestResult, portApp);
         subscribe(handleGraph, portApp);
         subscribe(handleAbort, portApp);
+        subscribe(handleAbortExec, portExec);
     }
     
     private Handler<InitExperiment> handleInit = new Handler<InitExperiment>() {
@@ -153,6 +157,8 @@ public class ExperimentManager extends ComponentDefinition {
                 nRuns = 1;
             }
             
+            isExecuting = true;
+            
             // sample the input space and send the experiment request to the
             // executor.
             while (!sampler.isEmpty()) {
@@ -188,13 +194,22 @@ public class ExperimentManager extends ComponentDefinition {
     private Handler<RequestAbortion> handleAbort = new Handler<RequestAbortion>() {
         public void handle(RequestAbortion event) {
             
-            logger.info("Request the ExecutorService to shutdown.");
-            //stop all calculating threads
-            es.shutdownNow();
-            
-            
-            // Sending ABORT request the CloudExecutionManager
-            trigger(new AbortExecution(expId), portExec);
+            if (isExecuting) {
+                // Sending ABORT request the CloudExecutionManager
+                trigger(new AbortExecution(expId), portExec);
+            } else {
+                logger.info("Request the ExecutorService to shutdown.");
+                // stop all calculating threads
+                es.shutdownNow();
+            }
+        }
+    };
+    
+    private Handler<NotifyAbortExecution> handleAbortExec = new Handler<NotifyAbortExecution>() {
+        
+        @Override
+        public void handle(NotifyAbortExecution event) {
+            trigger(new NotifyAbortComplete(), portApp);
         }
     };
     
@@ -287,6 +302,8 @@ public class ExperimentManager extends ComponentDefinition {
                 }
                 
                 if (isReady) {
+                    
+                    isExecuting = false;
                     
                     // print the exp execution summary.
                     printExecStatus();
@@ -436,7 +453,8 @@ public class ExperimentManager extends ComponentDefinition {
                     lb[i] = min[i] + lbVector[i] * step[i];
                     ub[i] = lb[i] + step[i];
                 }
-                results.add(getExecutorService().submit(new PartitionThread(lb, ub)));
+                results.add(getExecutorService().submit(
+                        new PartitionThread(lb, ub)));
             }
             
             Runnable waitForResult = new Runnable() {
@@ -468,7 +486,8 @@ public class ExperimentManager extends ComponentDefinition {
                         trigger(new NotifyMinimizationCompleted(), portApp);
                         
                         trigger(new ResponseStatus(source, event,
-                                ResponseStatus.Status.SUCCESS, "MSE surface minimized."),
+                                ResponseStatus.Status.SUCCESS,
+                                "MSE surface minimized."),
                                 portStatus);
                         
                     } else {
@@ -489,10 +508,10 @@ public class ExperimentManager extends ComponentDefinition {
                 }
             };
             
-            getExecutorService().submit(waitForResult);
+            new Thread(waitForResult).start();
             
             logger.debug("End submitting tasks.");
-
+            
         }
     };
     
@@ -500,6 +519,8 @@ public class ExperimentManager extends ComponentDefinition {
         public void handle(RequestMinimizationContinue event) {
             // add the new Design Points to list and procced to request for
             // more executions.
+            
+            isExecuting = true;
             logger.info("Adding new points:");
             for (double[] dataPoint : newPoints) {
                 logger.info(Arrays.toString(dataPoint));
@@ -637,6 +658,6 @@ public class ExperimentManager extends ComponentDefinition {
         if (es.isShutdown()) {
             es = Executors.newCachedThreadPool();
         }
-        return es; 
+        return es;
     }
 }

@@ -6,4 +6,5 @@ public class PortExecutors extends PortType {{
 	request(RequestExecution.class);
 	indication(ResponseExecution.class);
 	request(AbortExecution.class);
+	indication(NotifyAbortExecution.class);
 }}
