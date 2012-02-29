@@ -1,0 +1,35 @@
+Step-by-step instruction how to run compile and run the kriging application
+
+1. Install the MATLAB compiler runtime library
+- go to kriging-matlab-code/se.sics.kriging.core/distrib
+- run the mcr.bin
+
+2. Install the JAR files for the MATLAB wrapper class into the local maven repository
+- go to kriging-matlab-code/se.sics.kriging.core.distrib
+- run the script mvn_install.sh
+
+3. Compile the kriging project
+- go to stochastic-kriging/
+- mvn install -Dmaven.test.skip=true
+
+4. Build the executable jar file
+- go to stochastic-kriging/kriging-application
+- run mvn assembly:assembly
+
+5. Create the run script with the correct MATLAB lib path
+- go to stochastic-kriging/kriging-application
+- open the kriging-run.sh
+- change the $MCR_ROOT to the correct local path in which the MATLAB Runtime lib was installed
+
+6. Start the application using the script
+
+7. Compile the executor daemon
+- go to stochastic-kriging/executor
+- run mvn assembly:assembly
+
+8. start the executor daemon on all the client machines
+- copy the executor daemon to the targeted machines
+- syntax: java -jar executor.jar [name | address] [port]
+
+9. start the experiment
+- copy the simulation jar file to the same folder where the daemons are located.
